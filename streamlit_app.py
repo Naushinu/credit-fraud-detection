@@ -53,19 +53,11 @@ st.markdown("# Credit‑Card Fraud Detection", unsafe_allow_html=True)
 # helper functions
 @st.cache_data(show_spinner=True)
 def load_default_dataset() -> pd.DataFrame:
-    """Load the CSV shipped with the Kaggle dataset (local cache path)."""
-    default_path = (
-        os.path.expanduser(
-            "~/.cache/kagglehub/datasets/mlg-ulb/creditcardfraud/versions/3"
-        )
-    )
-    csv_path = os.path.join(default_path, "creditcard.csv")
+    """Load creditcard.csv from the app folder (works locally & when deployed)."""
+    csv_path = "creditcard.csv"
     if not os.path.exists(csv_path):
-        raise FileNotFoundError(
-            "creditcard.csv not found – please download the Kaggle dataset first."
-        )
+        raise FileNotFoundError("creditcard.csv not found in the app directory.")
     return pd.read_csv(csv_path)
-
 
 def pastelize_fig(fig):
     """Apply a pastel face‑color to matplotlib fig for a cohesive look."""

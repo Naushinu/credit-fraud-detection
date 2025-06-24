@@ -11,10 +11,8 @@ Author: Naushin Uddin
 
 # imports
 import os
-import tempfile
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import seaborn as sns
 import streamlit as st
@@ -25,6 +23,25 @@ from sklearn.metrics import (classification_report, confusion_matrix,
                              roc_auc_score, roc_curve)
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+
+# Optional Kaggle API import - only if available
+try:
+    from kaggle.api.kaggle_api_extended import KaggleApi
+    KAGGLE_AVAILABLE = True
+except ImportError:
+    KAGGLE_AVAILABLE = False
+
+def download_kaggle_dataset():
+    """Download dataset from Kaggle if not already present and Kaggle API is available."""
+    if not os.path.exists("creditcard.csv") and KAGGLE_AVAILABLE:
+        try:
+            api = KaggleApi()
+            api.authenticate()
+            api.dataset_download_files("mlg-ulb/creditcardfraud", path=".", unzip=True)
+        except Exception as e:
+            st.warning(f"Could not download from Kaggle: {e}")
+            return False
+    return os.path.exists("creditcard.csv")
 
 # configuration
 
@@ -53,10 +70,19 @@ st.markdown("# Credit‑Card Fraud Detection", unsafe_allow_html=True)
 # helper functions
 @st.cache_data(show_spinner=True)
 def load_default_dataset() -> pd.DataFrame:
-    """Load creditcard.csv from the app folder (works locally & when deployed)."""
+    """Load the default creditcard.csv dataset."""
     csv_path = "creditcard.csv"
+
+    # Try to download if file doesn't exist
     if not os.path.exists(csv_path):
-        raise FileNotFoundError("creditcard.csv not found in the app directory.")
+        if not download_kaggle_dataset():
+            st.error("❌ creditcard.csv not found in the app directory.")
+            st.stop()
+
+    if not os.path.exists(csv_path):
+        st.error("❌ creditcard.csv not found – please ensure the dataset is available.")
+        st.stop()
+
     return pd.read_csv(csv_path)
 
 def pastelize_fig(fig):
@@ -89,7 +115,8 @@ fast_mode = st.sidebar.checkbox("Fast mode (train on 50 k rows)", value=False)
 
 # load data
 try:
-    df = load_default_dataset() if user_file is None else pd.read_csv(user_file)
+    df = load_default_dataset() \
+        if user_file is None else pd.read_csv(user_file)
 except Exception as e:
     st.error(f"Hmmm...It looks like we failed to load your dataset: {e}")
     st.stop()
@@ -107,7 +134,7 @@ with col_dist2:
 
 # Class distribution bar
 fig_bar, ax_bar = plt.subplots(figsize=(3, 2))
-sns.countplot(x=df["Class"], palette=["#b4e0fe", "#ffb7ce"], ax=ax_bar)
+sns.countplot(data=df, x="Class", hue="Class", palette=["#b4e0fe", "#ffb7ce"], ax=ax_bar, legend=False)
 ax_bar.set_title("Class Distribution (0 = Legit, 1 = Fraud)")
 ax_bar.set_xlabel("")
 ax_bar.set_ylabel("Count")
